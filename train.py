@@ -8,24 +8,20 @@ wenzhu.xing@tuni.fi
 """
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 import glob
 import multiprocessing
 import os
-import pickle
 import shutil
 import sys
-from datetime import datetime
-import cv2
-import numpy as np
 import tensorflow as tf
-from keras.callbacks import Callback, LearningRateScheduler, ModelCheckpoint, CSVLogger
+from keras.callbacks import LearningRateScheduler, ModelCheckpoint, CSVLogger
 from keras.utils import plot_model
 import random
 
 from network.network import get_model
 from load_dataset import DataSequence
+from utils import learning_rate_scheduler, apply_workaround_of_OOM, HistoryLogger, Inspection
 
 from keras.models import load_model
 
@@ -52,118 +48,15 @@ flags.DEFINE_integer("train_steps_per_epoch", 2000, "Number of steps per epoch f
 flags.DEFINE_integer("valid_steps_per_epoch", 200, "Number of steps per epoch for validation.")
 flags.DEFINE_integer("epoch_num", 100, "Number of epochs.")
 flags.DEFINE_integer("worker_num", multiprocessing.cpu_count(), "Number of processes to spin up for data generator.")
-flags.DEFINE_string("output_folder_path", "/home/results", "Path to directory to output files.")
+flags.DEFINE_string("output_folder_path", "results", "Path to directory to output files.")
 flags.DEFINE_string("optimizer", "adam", "optimizer of model")
 flags.DEFINE_string("initializer", "he_normal", "initializer of model")
 flags.DEFINE_integer("scale_factor", 2, "Scale factor 2, 3 or 4.")
 flags.DEFINE_float("noise", 0.0784, "standard deviation of the Gaussian noise added to the images.")
 flags.DEFINE_string("loss_function", "mean_absolute_error", "loss function of training.")
+flags.DEFINE_bool("transfer", False, "transfer parameters from pretrained model")
+flags.DEFINE_string("model_folder_path", "models/jdmsr+_model.h5", "Path of the trained model folder.")
 FLAGS = flags.FLAGS
-
-
-def learning_rate_scheduler(epoch, learning_rate_mode, learning_rate_start, learning_rate_end, epoch_num):
-    learning_rate = None
-    if learning_rate_mode == "constant":
-        assert learning_rate_start == learning_rate_end, "starting and ending learning rates should be equal!"
-        learning_rate = learning_rate_start
-    elif learning_rate_mode == "linear":
-        learning_rate = (learning_rate_end - learning_rate_start) / epoch_num * epoch + learning_rate_start
-    elif learning_rate_mode == "half-cut":
-        if epoch < 10:
-            learning_rate = learning_rate_start
-        elif epoch < 100:
-            learning_rate = learning_rate_start / 10
-        else:
-            learning_rate = learning_rate_start / 20
-    elif learning_rate_mode == "constant-linear":
-        if epoch < 50:
-            learning_rate = learning_rate_start
-        else:
-            learning_rate = (learning_rate_end - learning_rate_start) / (epoch_num -50) * (epoch - 49) + learning_rate_start
-    elif learning_rate_mode == "cosine":
-        assert learning_rate_start > learning_rate_end, "starting learning rate should be higher than ending learning rate!"
-        learning_rate = (learning_rate_start - learning_rate_end) / 2 * np.cos(np.pi * epoch / (epoch_num - 1)) + (learning_rate_start + learning_rate_end) / 2
-    else:
-        assert False, "{} is an invalid argument!".format(learning_rate_mode)
-    assert learning_rate > 0, "learning_rate {} is not positive!".format(learning_rate)
-    return learning_rate
-
-
-class HistoryLogger(Callback):
-    def __init__(self, output_folder_path):
-        super(HistoryLogger, self).__init__()
-
-        self.accumulated_logs_dict = {}
-        self.output_folder_path = output_folder_path
-
-    def visualize(self, loss_name):
-        # Unpack the values
-        epoch_to_loss_value_dict = self.accumulated_logs_dict[loss_name]
-        epoch_list = sorted(epoch_to_loss_value_dict.keys())
-        loss_value_list = [epoch_to_loss_value_dict[epoch] for epoch in epoch_list]
-
-        # Save the figure to disk
-        figure = plt.figure()
-        if isinstance(loss_value_list[0], dict):
-            for metric_name in loss_value_list[0].keys():
-                metric_value_list = [loss_value[metric_name] for loss_value in loss_value_list]
-                print("{} {} {:.6f}".format(loss_name, metric_name, metric_value_list[-1]))
-                plt.plot(epoch_list, metric_value_list, label="{} {:.6f}".format(metric_name, metric_value_list[-1]))
-        else:
-            plt.plot(epoch_list, loss_value_list, label="{} {:.6f}".format(loss_name, loss_value_list[-1]))
-        plt.grid(True)
-        plt.legend(loc="best")
-        plt.savefig(os.path.join(self.output_folder_path, "{}.png".format(loss_name)))
-        plt.close(figure)
-
-    def on_epoch_end(self, epoch, logs=None):  # @UnusedVariable
-        # Visualize each figure
-        for loss_name, loss_value in logs.items():
-            if loss_name not in self.accumulated_logs_dict:
-                self.accumulated_logs_dict[loss_name] = {}
-            self.accumulated_logs_dict[loss_name][epoch] = loss_value
-            self.visualize(loss_name)
-
-        # Save the accumulated_logs_dict to disk
-        with open(os.path.join(self.output_folder_path, "accumulated_logs_dict.pkl"), "wb") as file_object:
-            pickle.dump(self.accumulated_logs_dict, file_object, pickle.HIGHEST_PROTOCOL)
-
-class Inspection(Callback):
-    def __init__(self, inspection_generator, output_folder_path, add_noise):
-        super(Inspection, self).__init__()
-
-        self.inspection_generator = inspection_generator
-        self.output_folder_path = output_folder_path
-        self.add_noise = add_noise
-        self.format_image_content = lambda image_content: ((image_content * 0.5 + 0.5) * 255).astype(np.uint8)
-
-    def on_epoch_end(self, epoch, logs=None):  # @UnusedVariable
-        if (epoch+1) % 10 == 1:
-            image_and_noise_list, clean_image_content_array = self.inspection_generator[0]
-            if self.add_noise:
-                corrupt_image_content_array = image_and_noise_list[0]
-            else:
-                corrupt_image_content_array = image_and_noise_list
-            self.inspection_generator.on_epoch_end()
-            predicted_image_content_array = self.model.predict_on_batch(image_and_noise_list)
-            predicted_image_content_array = np.clip(predicted_image_content_array, -1, 1)
-    
-            subfolder_path = os.path.join(self.output_folder_path, "epoch{:04d}".format(epoch + 1))
-            if not os.path.exists(subfolder_path):
-                os.makedirs(subfolder_path)
-    
-            for sample_index, (corrupt_image_content, clean_image_content, predicted_image_content) in enumerate(zip(corrupt_image_content_array, clean_image_content_array, predicted_image_content_array), start=1):
-                cv2.imwrite(os.path.join(subfolder_path, "epoch_{}_sample_{}_corrupt.png".format(epoch + 1, sample_index)), self.format_image_content(corrupt_image_content))
-                cv2.imwrite(os.path.join(subfolder_path, "epoch_{}_sample_{}_clean.png".format(epoch + 1, sample_index)), self.format_image_content(clean_image_content))
-                cv2.imwrite(os.path.join(subfolder_path, "epoch_{}_sample_{}_predicted.png".format(epoch + 1, sample_index)), self.format_image_content(predicted_image_content))
-
-
-def apply_workaround_of_OOM(data_generator):
-    while True:
-        for data_tuple in data_generator:
-            yield data_tuple
-        data_generator.on_epoch_end()
-
 
 def main(_):
     print("Getting hyperparameters ...")
@@ -195,6 +88,8 @@ def main(_):
     scale_factor = FLAGS.scale_factor
     max_noise = FLAGS.noise
     loss_function = FLAGS.loss_function
+    transfer = FLAGS.transfer
+    model_folder_path = FLAGS.model_folder_path
 
     shutil.rmtree(output_folder_path, ignore_errors=True)
     os.makedirs(output_folder_path)
@@ -206,7 +101,14 @@ def main(_):
     else:
         add_noise = False
     
-    model = get_model(optimizer, initializer, loss_function, filters, layers, scale_factor)
+    model = get_model(optimizer, initializer, loss_function, filters, layers, scale_factor, add_noise)
+    if transfer:
+        old_model = load_model(model_folder_path)
+        for i in range(738):
+            if i < 2:
+                model.layers[i].set_weights(old_model.layers[i].get_weights())
+            elif i > 4:
+                model.layers[i].set_weights(old_model.layers[i-2].get_weights())
     model.summary()
     plot_model(model, to_file=os.path.join(output_folder_path, "model.png"), show_shapes=True, show_layer_names=True)
 

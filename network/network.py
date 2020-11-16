@@ -14,10 +14,11 @@ from network.model import RG
 import sys
 sys.setrecursionlimit(10000)
 
-def get_model(optimizer, initializer, loss_function, filters, depth, scale_factor):
+def get_model(optimizer, initializer, loss_function, filters, depth, scale_factor, add_noise=True):
 
     mosaick = Input(shape=(None, None, 1))
-    estimated_noise = Input(shape=(None, None, 1)) 
+    if add_noise:
+        estimated_noise = Input(shape=(None, None, 1)) 
 
     # Set the input size and filter size
     kernel_size = (3, 3)
@@ -28,7 +29,10 @@ def get_model(optimizer, initializer, loss_function, filters, depth, scale_facto
                           kernel_initializer=initializer)(mosaick)
     
     # Add estimated noise vector
-    mosaick_noise = keras.layers.concatenate([pack_mosaick, estimated_noise], axis=3)
+    if add_noise:
+        mosaick_noise = keras.layers.concatenate([pack_mosaick, estimated_noise], axis=3)
+    else:
+        mosaick_noise = pack_mosaick
 
     # Color extraction
     first_conv = Conv2D(filters*4, kernel_size, padding='same',
@@ -55,16 +59,23 @@ def get_model(optimizer, initializer, loss_function, filters, depth, scale_facto
     final_conv = Add()([first_conv, final_conv])
     
     # Reconstruction
-    upsample = Conv2DTranspose(filters, kernel_size, strides=(scale_factor, scale_factor), padding='same',
-                               data_format='channels_last', activation='relu',
-                               kernel_initializer=initializer)(final_conv)
+    if scale_factor == 1:
+        upsample = Conv2D(filters, kernel_size, padding='same',
+                          data_format='channels_last', activation='relu',
+                          kernel_initializer=initializer)(final_conv)
+    else:
+        upsample = Conv2DTranspose(filters, kernel_size, strides=(scale_factor, scale_factor), padding='same',
+                                   data_format='channels_last', activation='relu',
+                                   kernel_initializer=initializer)(final_conv)
     
     output = Conv2D(3, kernel_size, padding='same',
                     data_format='channels_last',
                     kernel_initializer=initializer)(upsample)
     
-    model = Model([mosaick, estimated_noise], output)
-#        model = Model(mosaick, output)
+    if add_noise:
+        model = Model([mosaick, estimated_noise], output)
+    else:
+        model = Model(mosaick, output)
 
     # Compile the model
     model.compile(loss=loss_function, optimizer=optimizer, metrics=None)
