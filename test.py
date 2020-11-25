@@ -25,15 +25,18 @@ from network.network import get_model
 
 # Params
 flags = tf.app.flags  # @UndefinedVariable
-flags.DEFINE_string("test_image_folder_path_LR", "/home/xingw/Dataset/McM_LR_2/*.png", "Path of the test image folder.")
+flags.DEFINE_string("test_image_folder_path_LR", "data/McM_LR_2/*.png", "Path of the test image folder.")
 flags.DEFINE_string("model_folder_path", "models/jdndmsr+_model.h5", "Path of the trained model folder.")
 flags.DEFINE_integer("layers", 4, "number of Residual Groups.")
 flags.DEFINE_integer("filters", 64, "number of filters of CNN.")
 flags.DEFINE_integer("batch_size", 16, "Batch size.")
-flags.DEFINE_string("output_folder_path", "results/test_McM", "Path to directory to output files.")
+flags.DEFINE_string("output_folder_path", "test_results/test_McM", "Path to directory to output files.")
 flags.DEFINE_string("pixel_order", "rggb", "pixel oder for Bayer mosaic.")
 flags.DEFINE_float("noise", 10.0, "standard deviation of the Gaussian noise added to the images.")
 flags.DEFINE_integer("scale_factor", 2, "Scale factor 2, 3 or 4.")
+flags.DEFINE_integer("offset_x", 0, "Number of pixels to offset the mosaick in the x-axis.")
+flags.DEFINE_integer("offset_y", 0, "Number of pixels to offset the mosaick in the y-axis.")
+flags.DEFINE_bool("input_raw", False, "input raw image")
 FLAGS = flags.FLAGS
 
 def bayer_mosaic(clean_image_content, pixel_order='rggb'):
@@ -79,6 +82,9 @@ def main(_):
     noise_level = FLAGS.noise
     pixel_order = FLAGS.pixel_order
     scale_factor = FLAGS.scale_factor
+    offset_x = FLAGS.offset_x
+    offset_y = FLAGS.offset_y
+    input_raw = FLAGS.input_raw
 
     shutil.rmtree(output_folder_path, ignore_errors=True)
     os.makedirs(output_folder_path)
@@ -100,8 +106,16 @@ def main(_):
     for image_file_path_LR in test_image_file_path_LR_list:
         # Read image
         img_name = image_file_path_LR.split('/')[-1].split('.')[0]
-        image_content = cv2.imread(image_file_path_LR, 1)
-        image_height, image_width, _ = image_content.shape
+        if input_raw:
+            image_content = cv2.imread(image_file_path_LR, cv2.IMREAD_GRAYSCALE)
+            if offset_x > 0:
+                image_content = image_content[:, offset_x:]
+            if offset_y > 0:
+                image_content = image_content[offset_y:, :]
+            image_height, image_width = image_content.shape
+        else:
+            image_content = cv2.imread(image_file_path_LR, 1)
+            image_height, image_width, _ = image_content.shape
         if (image_height %2 !=0):
             image_height = image_height - 1
         if (image_width %2 != 0):

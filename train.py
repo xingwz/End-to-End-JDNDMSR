@@ -27,12 +27,12 @@ from keras.models import load_model
 
 # Params
 flags = tf.app.flags  # @UndefinedVariable
-flags.DEFINE_list("train_image_folder_path_LR", ["/home/Dataset/DIV2K_train_LR_2/{}.png","/home/Dataset/Flickr2K_LR_2/{}.png"], "Path of the train image folder.")
-flags.DEFINE_string("valid_image_folder_path_LR", "/home/Dataset/DIV2K_valid_LR_2/{}.png", "Path of the valid image folder.")
-flags.DEFINE_list("test_image_folder_path_LR", ["/home/Dataset/McM_LR_2/*.png","/home/Dataset/kodak_LR_2/*.png","/home/Dataset/B100_LR_2/*.png","/home/Dataset/urban100_LR_2/*.png"], "Path of the test image folder.")
-flags.DEFINE_list("train_image_folder_path", ["/home/Dataset/DIV2K_train_HR/{}.png","/home/Dataset/Flickr2K_HR/{}.png"], "Path of the train image folder.")
-flags.DEFINE_string("valid_image_folder_path", "/home/Dataset/DIV2K_valid_HR/{}.png", "Path of the valid image folder.")
-flags.DEFINE_list("test_image_folder_path", ["/home/Dataset/McM/*.png","/home/Dataset/kodak/*.png","/home/Dataset/B100/*.png","/home/Dataset/urban100/*.png"], "Path of the test image folder.")
+flags.DEFINE_list("train_image_folder_path_LR", ["data/DIV2K_train_LR_2/{}.png","data/Flickr2K_LR_2/{}.png"], "Path of the train image folder.")
+flags.DEFINE_string("valid_image_folder_path_LR", "data/DIV2K_valid_LR_2/{}.png", "Path of the valid image folder.")
+flags.DEFINE_list("test_image_folder_path_LR", ["data/McM_LR_2/*.png","data/kodak_LR_2/*.png","data/B100_LR_2/*.png","data/urban100_LR_2/*.png"], "Path of the test image folder.")
+flags.DEFINE_list("train_image_folder_path", ["data/DIV2K_train_HR/{}.png","data/Flickr2K_HR/{}.png"], "Path of the train image folder.")
+flags.DEFINE_string("valid_image_folder_path", "data/DIV2K_valid_HR/{}.png", "Path of the valid image folder.")
+flags.DEFINE_list("test_image_folder_path", ["data/McM/*.png","data/kodak/*.png","data/B100/*.png","data/urban100/*.png"], "Path of the test image folder.")
 flags.DEFINE_string("train_img_id", "*", "select image id of train data")
 flags.DEFINE_string("valid_img_id", "*", "select image id of valid data")
 flags.DEFINE_integer("image_width", 64, "Width of the images.")
