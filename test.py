@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Aug  8 10:55:14 2019
-
-@author: xingw
+@author: wenzhu xing
 """
 
 import glob
