@@ -20,7 +20,7 @@ cd JDNDMSR
 ```
 2. Preprocess test data: run `preprocess/preprocess.m` to downscale the image.
 Remember to change folders: `Your_GT_Path` and `Your_LR_Path`.
-3. Test our [JDNDMSR+ model](https://github.com/xingwz/End-to-End-JDNDMSR/blob/main/models/jdndmsr%2B_model.h5) (trained with data whose scale factor is 2 and noise level is from 0 to 20.)
+3. Test our [JDNDMSR^+ model](https://github.com/xingwz/End-to-End-JDNDMSR/blob/main/models/jdndmsr%2B_model.h5) (trained with data whose scale factor is 2 and noise level is from 0 to 20.)
 ```
 python test.py -test_image_folder_path_LR "Your_LR_Path" -noise 10.0 -scale_factor 2
 ```
