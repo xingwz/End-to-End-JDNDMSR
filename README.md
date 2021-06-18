@@ -1,5 +1,5 @@
 # End-to-End-JDNDMSR
-[End-to-End Learning for Joint Image Demosaicing, Denoising and Super-Resolution] (https://openaccess.thecvf.com/content/CVPR2021/papers/Xing_End-to-End_Learning_for_Joint_Image_Demosaicing_Denoising_and_Super-Resolution_CVPR_2021_paper.pdf) ([CVPR 2021](http://cvpr2021.thecvf.com))
+[End-to-End Learning for Joint Image Demosaicing, Denoising and Super-Resolution](https://openaccess.thecvf.com/content/CVPR2021/papers/Xing_End-to-End_Learning_for_Joint_Image_Demosaicing_Denoising_and_Super-Resolution_CVPR_2021_paper.pdf) ([CVPR 2021](http://cvpr2021.thecvf.com))
 
 ## Enviornment Requirements
 * Python >= 3
