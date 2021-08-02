@@ -36,3 +36,14 @@ Remember to change folders: `Your_GT_Path` and `Your_LR_Path`.
 python train.py
 ```
 3. You can transfer parameters from our pre-trained [JDMSR model](https://github.com/xingwz/End-to-End-JDNDMSR/blob/main/models/jdmsr_model.h5) by set parameter `transfer` as `True`.
+
+## Citation
+```
+@inproceedings{xing2021end,
+  title={End-to-End Learning for Joint Image Demosaicing, Denoising and Super-Resolution},
+  author={Xing, Wenzhu and Egiazarian, Karen},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={3507--3516},
+  year={2021}
+}
+```
