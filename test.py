@@ -111,6 +111,7 @@ def main(_):
             if offset_y > 0:
                 image_content = image_content[offset_y:, :]
             image_height, image_width = image_content.shape
+            image_content = np.expand_dims(image_content, axis = 2)
         else:
             image_content = cv2.imread(image_file_path_LR, 1)
             image_height, image_width, _ = image_content.shape
